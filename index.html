@@ -1,99 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Three.js Model</title>
     <style>
-      body {
-        margin: 0;
-      }
-      canvas {
-        display: block;
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Incluye Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Incluye GLTFLoader -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <!-- Incluye DragControls -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
-    
-    <script>
-      // Escena
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xff0000); // Fondo rojo
-
-      // Cámara
-      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.z = 3; // Posición de la cámara
-
-      // Renderer con anti-aliasing
-      const renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      document.body.appendChild(renderer.domElement);
-
-      // Luz ambiental
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-      scene.add(ambientLight);
-
-      // Luz direccional
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
-      directionalLight.position.set(2, 2, 2).normalize();
-      scene.add(directionalLight);
-
-      // Cargar el modelo GLB
-      const loader = new THREE.GLTFLoader();
-      loader.load(
-        'https://static.wixstatic.com/3d/8f321f_2e6b25852f2540cca6673e3366457270.glb',
-        function (gltf) {
-          const model = gltf.scene;
-          scene.add(model);
-
-          // Habilitar DragControls
-          const dragControls = new THREE.DragControls([model], camera, renderer.domElement);
-
-          // Restringir movimiento de posición
-          dragControls.addEventListener('drag', function (event) {
-            // Obtener la dirección del arrastre
-            const deltaX = event.target.position.x - model.position.x;
-            // Rotar solo alrededor del eje Y
-            model.rotation.y += deltaX * 0.01;
-            // Mantener la posición original
-            model.position.copy(event.target.position); // Esto no debería afectar la posición si se controla correctamente
-          });
-
-          // Eventos para DragControls
-          dragControls.addEventListener('dragstart', function (event) {
-            event.object.material.emissive.set(0xaaaaaa);
-          });
-          dragControls.addEventListener('dragend', function (event) {
-            event.object.material.emissive.set(0x000000);
-          });
-        },
-        undefined,
-        function (error) {
-          console.error('Error al cargar el modelo:', error);
+        body {
+            margin: 0;
         }
-      );
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-      // Animar la escena
-      function animate() {
-        requestAnimationFrame(animate);
-        renderer.render(scene, camera);
-      }
-      animate();
+    <script>
+        // Escena
+        const scene = new THREE.Scene();
+        
+        // Crear un fondo degradado
+        const textureLoader = new THREE.TextureLoader();
+        const gradientTexture = textureLoader.load('https://cdn.pixabay.com/photo/2021/03/09/10/53/gradient-6799651_1280.jpg'); // Cambia esta URL por una que contenga tu degradado
+        scene.background = gradientTexture;
 
-      // Ajustar la escena al redimensionar la ventana
-      window.addEventListener('resize', function () {
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-        renderer.setSize(width, height);
-        camera.aspect = width / height;
-        camera.updateProjectionMatrix();
-      });
+        // Cámara
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 3; // Posición de la cámara
+
+        // Renderer con anti-aliasing
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Luz ambiental
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        // Luz direccional
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+        directionalLight.position.set(2, 2, 2).normalize();
+        scene.add(directionalLight);
+
+        // Cargar el modelo GLB
+        const loader = new THREE.GLTFLoader();
+        let model;
+        let rotationSpeed = 0; // Velocidad de rotación
+        let isDragging = false; // Estado de arrastre
+        let previousMouseX = 0; // Posición anterior del mouse
+
+        loader.load(
+            'https://static.wixstatic.com/3d/8f321f_2e6b25852f2540cca6673e3366457270.glb',
+            function (gltf) {
+                model = gltf.scene;
+                scene.add(model);
+
+                // Evento para mouse down y touchstart
+                window.addEventListener('mousedown', function (event) {
+                    isDragging = true;
+                    previousMouseX = event.clientX; // Guarda la posición inicial del mouse
+                });
+                window.addEventListener('touchstart', function (event) {
+                    isDragging = true;
+                    previousMouseX = event.touches[0].clientX; // Guarda la posición inicial del toque
+                });
+
+                // Evento para mouse move y touchmove
+                window.addEventListener('mousemove', function (event) {
+                    if (isDragging) {
+                        const deltaX = event.clientX - previousMouseX; // Calcula el movimiento del mouse
+                        rotationSpeed = deltaX * 0.01; // Ajusta la velocidad de rotación
+                        previousMouseX = event.clientX; // Actualiza la posición del mouse
+                    }
+                });
+                window.addEventListener('touchmove', function (event) {
+                    if (isDragging) {
+                        const deltaX = event.touches[0].clientX - previousMouseX; // Calcula el movimiento del toque
+                        rotationSpeed = deltaX * 0.01; // Ajusta la velocidad de rotación
+                        previousMouseX = event.touches[0].clientX; // Actualiza la posición del toque
+                    }
+                });
+
+                // Evento para mouse up y touchend
+                window.addEventListener('mouseup', function () {
+                    isDragging = false; // Detiene el arrastre
+                });
+                window.addEventListener('touchend', function () {
+                    isDragging = false; // Detiene el arrastre
+                });
+
+                // Animar la escena
+                function animate() {
+                    requestAnimationFrame(animate);
+                    
+                    // Aplicar la rotación basada en la velocidad
+                    if (model) {
+                        model.rotation.y += rotationSpeed; // Gira el modelo basado en la velocidad
+                        
+                        // Suaviza la velocidad de rotación cuando se suelta el arrastre
+                        if (!isDragging) {
+                            rotationSpeed *= 0.95; // Reduce la velocidad gradualmente
+                        }
+                    }
+
+                    renderer.render(scene, camera);
+                }
+                animate();
+            },
+            undefined,
+            function (error) {
+                console.error('Error al cargar el modelo:', error);
+            }
+        );
+
+        // Ajustar la escena al redimensionar la ventana
+        window.addEventListener('resize', function () {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        });
     </script>
-  </body>
+</body>
 </html>
