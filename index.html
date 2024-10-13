@@ -22,9 +22,15 @@
         const scene = new THREE.Scene();
         
         // Crear un fondo degradado
-        const textureLoader = new THREE.TextureLoader();
-        const gradientTexture = textureLoader.load('https://cdn.pixabay.com/photo/2021/03/09/10/53/gradient-6799651_1280.jpg'); // Cambia esta URL por una que contenga tu degradado
-        scene.background = gradientTexture;
+        const backgroundColor1 = new THREE.Color(0xadd8e6); // Azul pastel claro
+        const backgroundColor2 = new THREE.Color(0x87ceeb); // Azul más claro
+        const gradient = new THREE.Color(); // Color para el fondo
+        const distance = 1; // Distancia para la mezcla de colores
+
+        for (let i = 0; i <= distance; i++) {
+            gradient.lerpColors(backgroundColor1, backgroundColor2, i / distance);
+            scene.background = gradient;
+        }
 
         // Cámara
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
