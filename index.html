@@ -18,41 +18,69 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Incluye GLTFLoader de su propio módulo -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <!-- Incluye DragControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
     
     <script>
       // Escena
       const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xff0000); // Establecer el fondo a rojo
 
       // Cámara
       const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.z = 5;
+      camera.position.z = 3; // Ajusta este valor para acercar el modelo
 
-      // Renderer
-      const renderer = new THREE.WebGLRenderer();
+      // Renderer con anti-aliasing
+      const renderer = new THREE.WebGLRenderer({ antialias: true }); // Habilitar anti-aliasing
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
-      // Luz ambiental mejorada
-      const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); // Aumenta la intensidad a 1.5
+      // Luz ambiental
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Baja la intensidad a 0.5
       scene.add(ambientLight);
 
-      // Luz direccional ajustada
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-      directionalLight.position.set(2, 2, 2).normalize(); // Ajusta la posición para mayor claridad
+      // Luz direccional
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3); // Baja la intensidad a 0.3
+      directionalLight.position.set(2, 2, 2).normalize();
       scene.add(directionalLight);
 
-      // Luz puntual adicional para iluminar más el modelo
-      const pointLight = new THREE.PointLight(0xffffff, 1.5);
+      // Luz puntual
+      const pointLight = new THREE.PointLight(0xffffff, 0.5); // Baja la intensidad a 0.5
       pointLight.position.set(5, 5, 5);
       scene.add(pointLight);
 
-      // Cargar el nuevo modelo GLB con GLTFLoader correctamente
+      // Variable para almacenar el modelo
+      let model;
+
+      // Cargar el nuevo modelo GLB con GLTFLoader
       const loader = new THREE.GLTFLoader();
       loader.load(
         'https://static.wixstatic.com/3d/8f321f_2e6b25852f2540cca6673e3366457270.glb', // Nuevo modelo
         function (gltf) {
-          const model = gltf.scene;
+          model = gltf.scene;
           scene.add(model);
+
+          // Habilitar DragControls
+          const objects = [model]; // Lista de objetos que se pueden arrastrar
+          const dragControls = new THREE.DragControls(objects, camera, renderer.domElement);
+
+          // Restringir movimiento de rotación al eje Y sin mover el modelo
+          dragControls.addEventListener('drag', function (event) {
+            // Solo se actualiza la rotación en el eje Y
+            const deltaX = event.target.position.x - model.position.x; // Calcular cambio en X
+            model.rotation.y += deltaX * 0.01; // Rotar alrededor del eje Y
+            event.target.position.copy(model.position); // Mantener la posición original
+          });
+
+          // Opcional: añadir eventos para dragControls
+          dragControls.addEventListener('dragstart', function (event) {
+            // Desactivar las luces durante el arrastre si es necesario
+            event.object.material.emissive.set(0xaaaaaa);
+          });
+          dragControls.addEventListener('dragend', function (event) {
+            // Restaurar la luz
+            event.object.material.emissive.set(0x000000);
+          });
         },
         undefined,
         function (error) {
