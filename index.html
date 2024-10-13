@@ -7,30 +7,43 @@
     <style>
         body {
             margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #0b2df1; /* Color de fondo azul pastel */
         }
         canvas {
             display: block;
         }
+        #upload-button {
+            background: url('https://static.wixstatic.com/shapes/8f321f_8297b2c2d19b4e36a6b117617b565d19.svg') no-repeat center;
+            width: 100px; /* Ajusta el tamaño del botón */
+            height: 100px; /* Ajusta el tamaño del botón */
+            border: none;
+            cursor: pointer;
+            position: absolute; /* Cambia la posición a absoluta */
+            bottom: 20px; /* Espacio desde el fondo */
+            right: 20px; /* Espacio desde la derecha */
+            z-index: 1; /* Asegúrate de que el botón esté en el frente */
+        }
+        #file-input {
+            display: none; /* Ocultar el input de archivo */
+        }
     </style>
 </head>
 <body>
+    <input type="file" id="file-input" accept="image/*" />
+    <button id="upload-button"></button>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/TextureLoader.js"></script>
 
     <script>
         // Escena
         const scene = new THREE.Scene();
-        
-        // Crear un fondo degradado
-        const backgroundColor1 = new THREE.Color(0xadd8e6); // Azul pastel claro
-        const backgroundColor2 = new THREE.Color(0x87ceeb); // Azul más claro
-        const gradient = new THREE.Color(); // Color para el fondo
-        const distance = 1; // Distancia para la mezcla de colores
-
-        for (let i = 0; i <= distance; i++) {
-            gradient.lerpColors(backgroundColor1, backgroundColor2, i / distance);
-            scene.background = gradient;
-        }
+        scene.background = new THREE.Color(0x0b2df1); // Color hexadecimal 0b2df1
 
         // Cámara
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -63,54 +76,40 @@
                 model = gltf.scene;
                 scene.add(model);
 
-                // Evento para mouse down y touchstart
-                window.addEventListener('mousedown', function (event) {
-                    isDragging = true;
-                    previousMouseX = event.clientX; // Guarda la posición inicial del mouse
-                });
-                window.addEventListener('touchstart', function (event) {
-                    isDragging = true;
-                    previousMouseX = event.touches[0].clientX; // Guarda la posición inicial del toque
-                });
+                // Eventos para arrastre
+                window.addEventListener('mousedown', startDrag);
+                window.addEventListener('mousemove', drag);
+                window.addEventListener('mouseup', endDrag);
+                window.addEventListener('touchstart', startDrag);
+                window.addEventListener('touchmove', drag);
+                window.addEventListener('touchend', endDrag);
 
-                // Evento para mouse move y touchmove
-                window.addEventListener('mousemove', function (event) {
-                    if (isDragging) {
-                        const deltaX = event.clientX - previousMouseX; // Calcula el movimiento del mouse
-                        rotationSpeed = deltaX * 0.01; // Ajusta la velocidad de rotación
-                        previousMouseX = event.clientX; // Actualiza la posición del mouse
-                    }
-                });
-                window.addEventListener('touchmove', function (event) {
-                    if (isDragging) {
-                        const deltaX = event.touches[0].clientX - previousMouseX; // Calcula el movimiento del toque
-                        rotationSpeed = deltaX * 0.01; // Ajusta la velocidad de rotación
-                        previousMouseX = event.touches[0].clientX; // Actualiza la posición del toque
-                    }
-                });
+                function startDrag(event) {
+                    isDragging = true;
+                    previousMouseX = event.clientX || event.touches[0].clientX;
+                }
 
-                // Evento para mouse up y touchend
-                window.addEventListener('mouseup', function () {
+                function drag(event) {
+                    if (isDragging) {
+                        const deltaX = (event.clientX || event.touches[0].clientX) - previousMouseX;
+                        rotationSpeed = deltaX * 0.01; // Ajusta la velocidad de rotación
+                        previousMouseX = event.clientX || event.touches[0].clientX;
+                    }
+                }
+
+                function endDrag() {
                     isDragging = false; // Detiene el arrastre
-                });
-                window.addEventListener('touchend', function () {
-                    isDragging = false; // Detiene el arrastre
-                });
+                }
 
                 // Animar la escena
                 function animate() {
                     requestAnimationFrame(animate);
-                    
-                    // Aplicar la rotación basada en la velocidad
                     if (model) {
                         model.rotation.y += rotationSpeed; // Gira el modelo basado en la velocidad
-                        
-                        // Suaviza la velocidad de rotación cuando se suelta el arrastre
                         if (!isDragging) {
-                            rotationSpeed *= 0.95; // Reduce la velocidad gradualmente
+                            rotationSpeed *= 0.9; // Reduce la velocidad gradualmente
                         }
                     }
-
                     renderer.render(scene, camera);
                 }
                 animate();
@@ -120,6 +119,36 @@
                 console.error('Error al cargar el modelo:', error);
             }
         );
+
+        // Función para cargar la textura al modelo
+        function loadTexture(url) {
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(url, function (texture) {
+                model.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material.map = texture;
+                        child.material.needsUpdate = true; // Indica que se necesita actualizar el material
+                    }
+                });
+            });
+        }
+
+        // Manejar el clic del botón
+        document.getElementById('upload-button').addEventListener('click', () => {
+            document.getElementById('file-input').click(); // Abrir el selector de archivos
+        });
+
+        // Manejar la selección de archivos
+        document.getElementById('file-input').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    loadTexture(e.target.result); // Cargar la textura
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
         // Ajustar la escena al redimensionar la ventana
         window.addEventListener('resize', function () {
