@@ -32,13 +32,19 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       document.body.appendChild(renderer.domElement);
 
-      // Luz
-      const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+      // Luz ambiental mejorada
+      const ambientLight = new THREE.AmbientLight(0xffffff, 1.5); // Aumenta la intensidad a 1.5
       scene.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-      directionalLight.position.set(1, 1, 1).normalize();
+      // Luz direccional ajustada
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(2, 2, 2).normalize(); // Ajusta la posición para mayor claridad
       scene.add(directionalLight);
+
+      // Luz puntual adicional para iluminar más el modelo
+      const pointLight = new THREE.PointLight(0xffffff, 1.5);
+      pointLight.position.set(5, 5, 5);
+      scene.add(pointLight);
 
       // Cargar el modelo GLB con GLTFLoader correctamente
       const loader = new THREE.GLTFLoader();
