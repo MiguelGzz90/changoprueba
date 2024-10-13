@@ -1,65 +1,211 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modelo 3D con LOD</title>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modelo 3D Texturizado</title>
     <style>
-        body { margin: 0; }
-        canvas { display: block; }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: transparent; /* Asegurarse de que el fondo del cuerpo sea transparente */
+      }
+      canvas {
+        display: block;
+      }
+      #uploadButton {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
+    <button id="uploadButton">
+      <img
+        src="https://static.wixstatic.com/shapes/8f321f_8297b2c2d19b4e36a6b117617b565d19.svg"
+        alt="Subir textura"
+        width="50"
+      />
+    </button>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
-<script>
-    // Crear escena, cámara y renderizador
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+    <script>
+      let scene, camera, renderer, model;
+      let rotationSpeed = 0;
+      let isDragging = false;
+      let previousMousePosition = { x: 0, y: 0 };
 
-    // Luz
-    const light = new THREE.AmbientLight(0xffffff);
-    scene.add(light);
+      init();
+      animate();
 
-    // Crear LOD (Level of Detail)
-    const lod = new THREE.LOD();
+      function init() {
+        // Crear la escena
+        scene = new THREE.Scene();
+        scene.background = null; // Establecer el fondo como nulo para ser completamente transparente
 
-    // Cargar el modelo 3D de alta resolución
-    const loader = new THREE.GLTFLoader();
-    loader.load('ruta/a/tu/modelo-alta-resolucion.glb', function (gltf) {
-        const highResModel = gltf.scene;
-        lod.addLevel(highResModel, 0);  // A nivel 0 (más cercano)
-    });
+        // Crear la cámara
+        camera = new THREE.PerspectiveCamera(
+          75,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          1000
+        );
+        camera.position.z = 5; // Acercar la cámara al modelo
 
-    // Cargar el modelo 3D de media resolución
-    loader.load('ruta/a/tu/modelo-media-resolucion.glb', function (gltf) {
-        const mediumResModel = gltf.scene;
-        lod.addLevel(mediumResModel, 50);  // Se mostrará a una distancia de 50 o más
-    });
+        // Crear el renderizador
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // Habilitar alpha para fondo transparente
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true; // Habilitar sombras
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Usar sombras suaves
+        document.body.appendChild(renderer.domElement);
 
-    // Cargar el modelo 3D de baja resolución
-    loader.load('ruta/a/tu/modelo-baja-resolucion.glb', function (gltf) {
-        const lowResModel = gltf.scene;
-        lod.addLevel(lowResModel, 100);  // Se mostrará a una distancia de 100 o más
-    });
+        // Añadir luz
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1); // Aumentar intensidad de luz ambiental
+        scene.add(ambientLight);
 
-    scene.add(lod);  // Añadir LOD a la escena
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 2); // Aumentar intensidad de luz direccional
+        directionalLight.position.set(5, 10, 7.5);
+        directionalLight.castShadow = true; // Habilitar sombras en la luz direccional
+        scene.add(directionalLight);
 
-    camera.position.z = 5;
+        // Configurar sombra de la luz direccional
+        directionalLight.shadow.mapSize.width = 512; // Ajustar tamaño de mapa de sombras
+        directionalLight.shadow.mapSize.height = 512;
+        directionalLight.shadow.camera.near = 0.5; // Ajustar cámara de sombras
+        directionalLight.shadow.camera.far = 50;
+        directionalLight.shadow.camera.left = -10; // Ajustar límites de la cámara de sombras
+        directionalLight.shadow.camera.right = 10;
+        directionalLight.shadow.camera.top = 10;
+        directionalLight.shadow.camera.bottom = -10;
 
-    // Animación
-    function animate() {
+        // Crear el plano para el piso
+        const floorGeometry = new THREE.PlaneGeometry(10, 10); // Crear un plano de 10x10
+        const floorMaterial = new THREE.ShadowMaterial({ opacity: 0.5 }); // Material de sombra
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2; // Rotar el plano para que esté horizontal
+        floor.receiveShadow = true; // Habilitar recepción de sombras en el plano
+        scene.add(floor);
+
+        // Cargar el modelo 3D con textura
+        const loader = new THREE.GLTFLoader();
+        loader.load(
+          'https://static.wixstatic.com/3d/8f321f_ef92ed40429c4567a0ae84e22599460f.glb', // Modelo actualizado
+          function (gltf) {
+            model = gltf.scene;
+            model.position.set(0, 0, 0);
+            model.traverse(function (child) {
+              if (child.isMesh) {
+                child.castShadow = true; // Habilitar sombras en el modelo
+                child.receiveShadow = false; // No recibir sombras en el modelo
+              }
+            });
+            scene.add(model);
+          },
+          undefined,
+          function (error) {
+            console.error('Error al cargar el modelo:', error);
+          }
+        );
+
+        // Agregar evento para detectar arrastre
+        document.addEventListener('mousedown', onDocumentMouseDown, false);
+        document.addEventListener('mouseup', onDocumentMouseUp, false);
+        document.addEventListener('mousemove', onDocumentMouseMove, false);
+
+        // Redimensionar la ventana
+        window.addEventListener('resize', onWindowResize, false);
+
+        // Botón para cargar texturas
+        document
+          .getElementById('uploadButton')
+          .addEventListener('click', function () {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = function (event) {
+              const file = event.target.files[0];
+              const reader = new FileReader();
+              reader.onload = function (e) {
+                const textureLoader = new THREE.TextureLoader();
+                const texture = textureLoader.load(e.target.result);
+
+                // Aplicar la textura solo a "Cylinder"
+                model.traverse(function (child) {
+                  if (child.isMesh && child.name === 'Cylinder') { // Aplicar solo a "Cylinder"
+                    child.material.map = texture;
+
+                    // Ajustar propiedades de la textura
+                    child.material.map.wrapS = THREE.ClampToEdgeWrapping;
+                    child.material.map.wrapT = THREE.RepeatWrapping; // Permitir repetición vertical
+                    child.material.map.offset.y = 1; // Invertir verticalmente
+
+                    // Mantener el tamaño de la textura
+                    const cylinderHeight = child.geometry.parameters.height; // Obtener altura del cilindro
+                    const textureHeight = texture.image.height; // Obtener altura de la textura
+
+                    // Calcular el nuevo ancho de la textura manteniendo la relación de aspecto
+                    const scaleFactor = cylinderHeight / textureHeight;
+                    const newWidth = texture.image.width * scaleFactor;
+
+                    // Ajustar el repeat de la textura
+                    child.material.map.repeat.set(newWidth / texture.image.width, 1); // Ajustar el repeat según el nuevo ancho
+
+                    child.material.map.needsUpdate = true;
+                  }
+                });
+              };
+              reader.readAsDataURL(file);
+            };
+            input.click();
+          });
+      }
+
+      // Función para redimensionar la ventana
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      // Eventos para arrastrar y rotar el modelo
+      function onDocumentMouseDown(event) {
+        isDragging = true;
+      }
+
+      function onDocumentMouseUp(event) {
+        isDragging = false;
+      }
+
+      function onDocumentMouseMove(event) {
+        if (isDragging) {
+          const deltaMove = {
+            x: event.offsetX - previousMousePosition.x,
+          };
+
+          rotationSpeed = deltaMove.x * 0.005;
+        }
+
+        previousMousePosition = {
+          x: event.offsetX,
+          y: event.offsetY,
+        };
+      }
+
+      // Animar la escena
+      function animate() {
         requestAnimationFrame(animate);
-        lod.rotation.y += 0.01;  // Rotar el modelo
-        renderer.render(scene, camera);
-    }
-    animate();
-</script>
 
-</body>
+        if (model) {
+          model.rotation.y += rotationSpeed;
+          rotationSpeed *= 0.95; // Agregar fricción a la rotación
+        }
+
+        renderer.render(scene, camera);
+      }
+    </script>
+  </body>
 </html>
