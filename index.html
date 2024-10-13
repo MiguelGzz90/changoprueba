@@ -46,10 +46,10 @@
       pointLight.position.set(5, 5, 5);
       scene.add(pointLight);
 
-      // Cargar el modelo GLB con GLTFLoader correctamente
+      // Cargar el nuevo modelo GLB con GLTFLoader correctamente
       const loader = new THREE.GLTFLoader();
       loader.load(
-        'https://static.wixstatic.com/3d/8f321f_3fb7bd9003f14443a24e69b3a5937759.glb',
+        'https://static.wixstatic.com/3d/8f321f_2e6b25852f2540cca6673e3366457270.glb', // Nuevo modelo
         function (gltf) {
           const model = gltf.scene;
           scene.add(model);
