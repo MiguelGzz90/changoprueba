@@ -1,90 +1,63 @@
-<script>
-    // Escena, cámara, renderizador
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Objeto 3D</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/loaders/GLTFLoader.js"></script>
+    
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-    // Agregar luces
-    const ambientLight = new THREE.AmbientLight(0x404040, 2); // Luz ambiental (gris suave)
-    scene.add(ambientLight);
+        // Color de fondo
+        renderer.setClearColor(0xaaaaaa, 1); 
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1); // Luz direccional
-    directionalLight.position.set(0, 10, 10).normalize();
-    scene.add(directionalLight);
+        // Luz ambiental
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
 
-    // Cargar el archivo GLB
-    const loader = new THREE.GLTFLoader();
-    let chango, C1, C2;
+        // Luz direccional
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
 
-    loader.load('https://static.wixstatic.com/3d/8f321f_fcc9dac3a0d84d9c90bc0765ce1b0751.glb', function (gltf) {
-        const model = gltf.scene;
-        scene.add(model);
+        const loader = new THREE.GLTFLoader();
+        loader.load('https://static.wixstatic.com/3d/8f321f_762f9a860d9f41d0a856bdc1b8063078.glb', (gltf) => {
+            // Cambiar el material de todos los hijos del modelo
+            gltf.scene.traverse((child) => {
+                if (child.isMesh) {
+                    child.material = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.5, roughness: 0.5 });
+                }
+            });
+            scene.add(gltf.scene);
+        }, undefined, (error) => {
+            console.error(error);
+        });
 
-        // Encontrar los objetos dentro de la escena cargada
-        chango = model.getObjectByName('chango');
-        C1 = model.getObjectByName('C1');
-        C2 = model.getObjectByName('C2');
+        camera.position.z = 5;
 
-        // Posicionar la cámara como en Blender (ajusta según tu escena)
-        camera.position.set(0, 2, 5);
-
-        // Animación de rotación automática para el chango
         function animate() {
             requestAnimationFrame(animate);
-
-            if (chango) {
-                chango.rotation.y += 0.01;  // Rotación lenta en el eje Y
-            }
-
             renderer.render(scene, camera);
         }
         animate();
-    });
 
-    // Raycaster y eventos de clic
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-
-    function changeChangoColor(color) {
-        chango.traverse((child) => {
-            if (child.isMesh) {
-                child.material.color.set(color);
-            }
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         });
-    }
-
-    window.addEventListener('click', (event) => {
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        raycaster.setFromCamera(mouse, camera);
-
-        const intersects = raycaster.intersectObjects(scene.children, true);
-
-        if (intersects.length > 0) {
-            const clickedObject = intersects[0].object;
-
-            if (clickedObject === C1) {
-                changeChangoColor(0x000DFF);
-                chango.scale.set(1.2, 1.2, 1.2);
-            } else if (clickedObject === C2) {
-                changeChangoColor(0xFF7300);
-                if (C2 && C2.animation) {
-                    C2.animation.play();
-                }
-            } else if (clickedObject === chango) {
-                if (C2 && C2.animation) {
-                    C2.animation.play();
-                }
-            }
-        }
-    });
-
-    window.addEventListener('resize', function () {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-</script>
+    </script>
+</body>
+</html>
