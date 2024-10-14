@@ -34,12 +34,12 @@
 
     <script>
         let scene, camera, renderer, model, chango, C1, C2;
+        let mixer; // Para el manejo de animaciones
         let rotationSpeed = 0;
         let isDragging = false;
         let previousMousePosition = { x: 0, y: 0 };
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-        let isC2Animating = false;
 
         init();
         animate();
@@ -76,6 +76,12 @@
                     C1 = model.getObjectByName('C1');
                     C2 = model.getObjectByName('C2');
                     scene.add(model);
+
+                    // Configurar el mixer para la animación
+                    mixer = new THREE.AnimationMixer(model);
+                    gltf.animations.forEach((clip) => {
+                        mixer.clipAction(clip).play(); // Opcional, reproduce todas las animaciones
+                    });
                 },
                 undefined,
                 function (error) {
@@ -156,14 +162,10 @@
             const intersects = raycaster.intersectObjects(model.children, true);
 
             let clickedC1 = false;
-            let clickedC2 = false;
 
             intersects.forEach((intersect) => {
                 if (intersect.object.name === 'C1') {
                     clickedC1 = true;
-                }
-                if (intersect.object.name === 'C2') {
-                    clickedC2 = true;
                 }
             });
 
@@ -172,14 +174,12 @@
                 chango.material.color.set(0x000DFF); // Cambiar color a azul
                 C1.scale.set(1.2, 1.2, 1.2); // Aumentar tamaño de C1
             }
-            if (clickedC2) {
-                chango.material.color.set(0xFF7300); // Cambiar color a naranja
-                isC2Animating = true; // Activar animación de C2
-            }
 
             // Activar animación de C2 al hacer clic en chango
             if (intersects.some(intersect => intersect.object.name === 'chango')) {
-                isC2Animating = true; // Inicia animación al hacer clic en chango
+                chango.material.color.set(0xFF7300); // Cambiar color a naranja
+                mixer.stopAllAction(); // Detener otras animaciones si es necesario
+                mixer.clipAction(C2.animation).play(); // Inicia la animación de C2
             }
         }
 
@@ -192,10 +192,9 @@
                     chango.rotation.y += 0.01; // Ajusta la velocidad de rotación
                 }
 
-                // Animar C2 si isC2Animating es verdadero
-                if (isC2Animating && C2) {
-                    C2.rotation.y += 0.05; // Rotación o animación para C2
-                    // Aquí puedes agregar más animaciones o transformaciones a C2
+                // Actualizar el mixer
+                if (mixer) {
+                    mixer.update(0.01); // Actualiza las animaciones
                 }
 
                 rotationSpeed *= 0.95; // Agregar fricción a la rotación
