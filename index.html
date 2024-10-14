@@ -30,8 +30,15 @@
     </button>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
     <script>
-        let scene, camera, renderer;
+        let scene, camera, renderer, model, chango, C1, C2;
+        let rotationSpeed = 0;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        const raycaster = new THREE.Raycaster(); // Crear un rayo para raycasting
+        const mouse = new THREE.Vector2(); // Crear un vector para la posición del mouse
 
         init();
         animate();
@@ -58,14 +65,57 @@
             directionalLight.position.set(5, 10, 7.5);
             scene.add(directionalLight);
 
-            // Añadir un cubo
-            const geometry = new THREE.BoxGeometry(1, 1, 1);
-            const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-            const cube = new THREE.Mesh(geometry, material);
-            scene.add(cube);
+            // Cargar el modelo 3D
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                'https://static.wixstatic.com/3d/8f321f_9f4a699028e246cfa74ffa9eeb679317.glb', // URL de tu modelo
+                function (gltf) {
+                    model = gltf.scene;
+                    chango = model.getObjectByName('chango'); // Obtiene el elemento chango
+                    C1 = model.getObjectByName('C1'); // Obtiene el elemento C1
+                    C2 = model.getObjectByName('C2'); // Obtiene el elemento C2
+                    scene.add(model);
+                },
+                undefined,
+                function (error) {
+                    console.error('Error al cargar el modelo:', error);
+                }
+            );
+
+            // Eventos de interacción
+            document.addEventListener('mousedown', onDocumentMouseDown, false);
+            document.addEventListener('mouseup', onDocumentMouseUp, false);
+            document.addEventListener('mousemove', onDocumentMouseMove, false);
+            document.addEventListener('click', onDocumentClick, false); // Agregar evento de clic
 
             // Redimensionar la ventana
             window.addEventListener('resize', onWindowResize, false);
+
+            // Botón para cargar texturas
+            document
+                .getElementById('uploadButton')
+                .addEventListener('click', function () {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = function (event) {
+                        const file = event.target.files[0];
+                        const reader = new FileReader();
+                        reader.onload = function (e) {
+                            const textureLoader = new THREE.TextureLoader();
+                            const texture = textureLoader.load(e.target.result, function () {
+                                model.traverse(function (child) {
+                                    if (child.isMesh && child.name === "Cylinder") {
+                                        child.material.map = texture;
+                                        child.material.needsUpdate = true;
+                                    }
+                                });
+                            });
+                        };
+                        reader.readAsDataURL(file);
+                    };
+                    input.click();
+                });
         }
 
         // Función para redimensionar la ventana
@@ -75,9 +125,66 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
+        // Eventos para arrastrar y rotar el modelo
+        function onDocumentMouseDown(event) {
+            isDragging = true;
+        }
+
+        function onDocumentMouseUp(event) {
+            isDragging = false;
+        }
+
+        function onDocumentMouseMove(event) {
+            if (isDragging) {
+                const deltaMove = {
+                    x: event.offsetX - previousMousePosition.x,
+                };
+
+                rotationSpeed = deltaMove.x * 0.005;
+            }
+
+            previousMousePosition = {
+                x: event.offsetX,
+                y: event.offsetY,
+            };
+        }
+
+        // Evento de clic para detectar clics en C1 y C2
+        function onDocumentClick(event) {
+            // Calcular la posición del mouse en el espacio de la ventana
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // Actualizar el raycaster
+            raycaster.setFromCamera(mouse, camera);
+
+            // Calcular objetos intersecados
+            const intersects = raycaster.intersectObjects(model.children, true);
+
+            // Revisar si se intersectó C1 o C2
+            intersects.forEach((intersect) => {
+                if (intersect.object.name === 'C1') {
+                    chango.material.color.set(0x000DFF); // Cambiar color a azul
+                }
+                if (intersect.object.name === 'C2') {
+                    chango.material.color.set(0xFF7300); // Cambiar color a naranja
+                }
+            });
+        }
+
         // Animar la escena
         function animate() {
             requestAnimationFrame(animate);
+
+            if (model) {
+                // Rotación automática de chango
+                if (chango) {
+                    chango.rotation.y += 0.01; // Ajusta la velocidad de rotación
+                }
+
+                rotationSpeed *= 0.95; // Agregar fricción a la rotación
+            }
+
             renderer.render(scene, camera);
         }
     </script>
