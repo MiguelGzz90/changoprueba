@@ -1,88 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lata 3D Interactiva</title>
+    <title>Video a Pantalla Completa en Three.js</title>
     <style>
-        body { margin: 0; }
+        body { margin: 0; overflow: hidden; } /* Sin márgenes ni scroll */
         canvas { display: block; }
-        #fileInput { position: absolute; top: 10px; left: 10px; z-index: 1; }
     </style>
 </head>
 <body>
-    <input type="file" id="fileInput" accept="image/*">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://threejs.org/build/three.min.js"></script>
     <script>
-        // Configuración básica de Three.js
+        // Crear la escena, cámara y renderizador
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        const renderer = new THREE.WebGLRenderer({ alpha: true }); // Habilitar fondo transparente
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Cargar el modelo GLB (lata)
-        const loader = new THREE.GLTFLoader();
-        let model;
-        loader.load('https://static.wixstatic.com/3d/8f321f_ef92ed40429c4567a0ae84e22599460f.glb', function (gltf) {
-            model = gltf.scene;
-            scene.add(model);
-            model.position.set(0, -1, 0);
-            model.rotation.y = Math.PI / 2;
-        }, undefined, function (error) {
-            console.error(error);
+        // Crear el video y la textura
+        const video = document.createElement('video');
+        video.src = 'https://www.w3schools.com/html/mov_bbb.mp4'; // Video de ejemplo
+        video.crossOrigin = 'anonymous'; // Asegurarse de que el video se pueda cargar
+        video.load();
+        video.muted = true; // Para reproducir sin sonido
+        video.play();
+
+        const videoTexture = new THREE.VideoTexture(video);
+        const material = new THREE.MeshBasicMaterial({ map: videoTexture });
+        const geometry = new THREE.PlaneGeometry(16, 9); // Ajusta el tamaño según sea necesario
+        const plane = new THREE.Mesh(geometry, material);
+        plane.position.set(0, 0, -5); // Ajusta la posición del plano
+        plane.scale.set(2.5, 2.5, 1); // Escalar el plano para llenar la pantalla
+        scene.add(plane);
+
+        camera.position.z = 5;
+
+        // Controlar la reproducción del video con el touchpad
+        window.addEventListener('touchmove', (event) => {
+            event.preventDefault(); // Evitar el scroll de la página
+            const touchY = event.touches[0].clientY; // Obtener la posición Y del primer toque
+            const maxHeight = window.innerHeight;
+            const scrollFraction = 1 - (touchY / maxHeight); // Invertir para que al bajar avance el video
+
+            // Asegúrate de que el video esté cargado
+            if (video.duration) {
+                video.currentTime = scrollFraction * video.duration;
+            }
         });
 
-        // Añadir luz
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(5, 10, 7.5);
-        scene.add(light);
-
-        // Posicionar la cámara
-        camera.position.z = 3;
-
-        // Función para renderizar la escena
+        // Render loop
         function animate() {
             requestAnimationFrame(animate);
-            if (model) {
-                model.rotation.y += 0.01; // Rotar la lata automáticamente
-            }
             renderer.render(scene, camera);
         }
         animate();
-
-        // Cargar y aplicar textura
-        function applyTexture(imageURL) {
-            const textureLoader = new THREE.TextureLoader();
-            textureLoader.load(imageURL, function (texture) {
-                model.traverse((child) => {
-                    if (child.isMesh) {
-                        child.material.map = texture;
-                        child.material.needsUpdate = true;
-                    }
-                });
-            });
-        }
-
-        // Escuchar el evento de carga de archivos
-        document.getElementById('fileInput').addEventListener('change', function (event) {
-            const file = event.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                applyTexture(e.target.result);
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // Ajustar tamaño del renderizado al cambiar el tamaño de la ventana
-        window.addEventListener('resize', function () {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-            renderer.setSize(width, height);
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
-        });
     </script>
 </body>
 </html>
