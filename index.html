@@ -3,59 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video a Pantalla Completa en Three.js</title>
+    <title>Cargar Modelo GLB con Luces en Three.js</title>
     <style>
-        body { margin: 0; overflow: hidden; } /* Sin márgenes ni scroll */
+        body { margin: 0; }
         canvas { display: block; }
     </style>
 </head>
 <body>
-    <script src="https://threejs.org/build/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/loaders/GLTFLoader.js"></script>
     <script>
-        // Crear la escena, cámara y renderizador
+        // Escena, cámara y renderizador
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ alpha: true }); // Habilitar fondo transparente
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0xeeeeee, 1);  // Color de fondo
         document.body.appendChild(renderer.domElement);
 
-        // Crear el video y la textura
-        const video = document.createElement('video');
-        video.src = 'https://www.w3schools.com/html/mov_bbb.mp4'; // Video de ejemplo
-        video.crossOrigin = 'anonymous'; // Asegurarse de que el video se pueda cargar
-        video.load();
-        video.muted = true; // Para reproducir sin sonido
-        video.play();
+        // Cargar el modelo GLB
+        const loader = new THREE.GLTFLoader();
+        loader.load(
+            'https://static.wixstatic.com/3d/8f321f_45dbf028b6074902baaeb7825dda25f2.glb', 
+            (gltf) => {
+                console.log('Modelo cargado:', gltf);
+                
+                // Añadir el modelo a la escena
+                scene.add(gltf.scene);
 
-        const videoTexture = new THREE.VideoTexture(video);
-        const material = new THREE.MeshBasicMaterial({ map: videoTexture });
-        const geometry = new THREE.PlaneGeometry(16, 9); // Ajusta el tamaño según sea necesario
-        const plane = new THREE.Mesh(geometry, material);
-        plane.position.set(0, 0, -5); // Ajusta la posición del plano
-        plane.scale.set(2.5, 2.5, 1); // Escalar el plano para llenar la pantalla
-        scene.add(plane);
+                // Forzar materiales MeshStandardMaterial
+                gltf.scene.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material = new THREE.MeshStandardMaterial({
+                            color: 0xffffff, // Blanco
+                            roughness: 0.5,   // Un poco rugoso
+                            metalness: 0.5    // Un poco metálico
+                        });
+                    }
+                });
 
-        camera.position.z = 5;
+                // Verificar luces del modelo (LUZFRONTAL y LUZTRAS)
+                const luzFrontal = gltf.scene.getObjectByName('LUZFRONTAL');
+                if (luzFrontal) {
+                    console.log('LUZFRONTAL encontrada:', luzFrontal);
+                    scene.add(luzFrontal);
+                    luzFrontal.intensity = 5; // Asegurar que la intensidad sea suficiente
+                } else {
+                    console.log('LUZFRONTAL no encontrada');
+                }
 
-        // Controlar la reproducción del video con el touchpad
-        window.addEventListener('touchmove', (event) => {
-            event.preventDefault(); // Evitar el scroll de la página
-            const touchY = event.touches[0].clientY; // Obtener la posición Y del primer toque
-            const maxHeight = window.innerHeight;
-            const scrollFraction = 1 - (touchY / maxHeight); // Invertir para que al bajar avance el video
+                const luzTras = gltf.scene.getObjectByName('LUZTRAS');
+                if (luzTras) {
+                    console.log('LUZTRAS encontrada:', luzTras);
+                    scene.add(luzTras);
+                    luzTras.intensity = 5; // Asegurar que la intensidad sea suficiente
+                } else {
+                    console.log('LUZTRAS no encontrada');
+                }
 
-            // Asegúrate de que el video esté cargado
-            if (video.duration) {
-                video.currentTime = scrollFraction * video.duration;
+                // Asegurarnos de que la cámara esté mirando el modelo
+                camera.position.set(0, 1, 3);  // Ajustar posición de la cámara
+                camera.lookAt(gltf.scene.position);
+            },
+            undefined,
+            (error) => {
+                console.error('Error al cargar el modelo GLB:', error);
             }
-        });
+        );
 
-        // Render loop
+        // Añadir una luz ambiental (más intensa)
+        const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // Luz ambiental brillante
+        scene.add(ambientLight);
+
+        // Añadir una luz direccional para iluminar la escena
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5); // Luz direccional
+        directionalLight.position.set(1, 2, 3).normalize(); // Posición de la luz
+        scene.add(directionalLight);
+
+        // Añadir una luz puntual para iluminar desde una dirección más cercana
+        const pointLight = new THREE.PointLight(0xffffff, 2, 10);  // Luz puntual más brillante
+        pointLight.position.set(0, 2, 0);  // Ajustar su posición
+        scene.add(pointLight);
+
+        // Animación y renderizado
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
         }
+
         animate();
+
+        // Ajustar la cámara y el renderizador al cambiar el tamaño de la ventana
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
